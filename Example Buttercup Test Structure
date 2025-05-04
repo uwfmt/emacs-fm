@@ -1,0 +1,7 @@
+(require 'buttercup)
+
+(describe "Test Group Name"
+  (it "Test description"
+    (expect (some-function) :to-equal "expected-value")))
+
+(buttercup-run-tests)
