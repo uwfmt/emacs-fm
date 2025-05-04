@@ -20,8 +20,8 @@
 ;; Created: Majo 04, 2025
 ;; Modified: Majo 04, 2025
 ;; Version: 0.0.1
-;; Keywords: abbrev bib c calendar comm convenience data docs emulations extensions faces files frames games hardware help hypermedia i18n internal languages lisp local maint mail matching mouse multimedia news outlines processes terminals tex text tools unix vc wp
-;; Homepage: https://github.com/grafov/fm
+;; Keywords: files tools unix
+;; Homepage: https://github.com/uwfmt/emacs-fm
 ;; Package-Requires: ((emacs "24.3"))
 ;;
 ;; This file is not part of GNU Emacs.
@@ -35,7 +35,7 @@
 ;;
 ;;; Code:
 
-(require 'dired)
+(require 'cl-lib)
 
 (defgroup fm nil
   "Interface for fsel utility."
@@ -46,64 +46,131 @@
   :type 'string
   :group 'fm)
 
-(defun fm--run-fsel (command &key buffer &rest args)
-  "Run fsel COMMAND with ARGS.
-Returns (exit-code . output).
-If BUFFER is provided, use it for output; otherwise, default to \"*fsel-buffer*\"."
+(defconst fm-fsel-output-buffer "*fm-output*"
+  "Buffer name for raw output (stdout) of fsel utility.")
+(defconst fm-fsel-error-buffer "*fm-errors*"
+  "Errors buffer for output of errors (stderr) of fsel utility.")
+
+(defun fm--run-fsel (buffer tmpbuf &rest args)
+  "Execute fsel with ARGS and capture output/errors in buffers.
+If BUFFER is provided, use it for stdout instead of *fm-output*.
+Set TMPBUF to non nil for using temporary buffer (with popup).
+Stdout is written to *fm-output* (or BUFFER if specified).
+Stderr is written to *fm-errors*.
+Both buffers are overwritten on each call."
   (unless (locate-file fm-fsel-executable exec-path)
     (error "Utility `fsel' not found at %s" fm-fsel-executable))
-  (let* ((output-buffer (or buffer "*fm-output*"))
-         (process (apply #'start-process "fsel-process" nil fm-fsel-executable
-                         (append (list command) args)))
-         (output (with-current-buffer (get-buffer-create output-buffer)
-                   (buffer-string))))
-    (while (eq (process-status process) 'run)
-      (sleep-for 0.1))
-    (cons (process-exit-status process) output)))
 
-(defun fm-list-selection ()
-  "Display current fsel selection in *Selected files* buffer and switch to it."
-  (interactive)
-  (let ((buffer (get-buffer-create "*Selected files*")))
-    (with-current-buffer buffer
-      (setq buffer-read-only nil)
-      (erase-buffer)
-      (let ((result (fm--run-fsel "list" :buffer "*Selected files*")))
-        (if (zerop (car result))
-            (insert (cdr result))
-          (insert (format "Error: %s" (cdr result))))
-        (setq buffer-read-only t)
-        (goto-char (point-min))))
-    (display-buffer buffer)
-    (switch-to-buffer buffer)))
+  (let* ((output-buffer (or buffer fm-fsel-output-buffer))
+         (exit-status 0))
 
-(defun fm-clear-selection ()
+    ;; Clear buffers before use
+    (unless tmpbuf
+      (with-current-buffer (get-buffer-create output-buffer)
+        (setq-local buffer-read-only nil)
+        (erase-buffer)))
+    (with-current-buffer (get-buffer-create fm-fsel-error-buffer)
+      (setq-local buffer-read-only nil)
+      (erase-buffer))
+
+    ;; Start process with output to buffer
+    (if tmpbuf
+        (with-output-to-temp-buffer output-buffer
+          (let ((process (apply #'start-process
+                                "fsel-process"
+                                (current-buffer)
+                                fm-fsel-executable
+                                args)))
+            (set-process-filter process (lambda (p output) (princ output)))
+            ;; Redirect stderr to error buffer
+            (set-process-sentinel process
+                                  (lambda (proc event)
+                                    (when (and (eq (process-status proc) 'exit)
+                                               (= (process-exit-status proc) 0))
+                                      (with-current-buffer fm-fsel-error-buffer
+                                        (erase-buffer)))))
+
+            ;; Wait for process completion
+            (while (eq (process-status process) 'run)
+              (sleep-for 0.01))
+            (setq exit-status (process-exit-status process))))
+
+      ;; Else do for regular buffer
+      (let ((process (apply #'start-process
+                            "fsel-process"
+                            output-buffer
+                            fm-fsel-executable
+                            args)))
+
+        ;; Redirect stderr to error buffer
+        (set-process-sentinel process
+                              (lambda (proc event)
+                                (when (and (eq (process-status proc) 'exit)
+                                           (= (process-exit-status proc) 0))
+                                  (with-current-buffer fm-fsel-error-buffer
+                                    (erase-buffer)))))
+
+        ;; Wait for process completion
+        (while (eq (process-status process) 'run)
+          (sleep-for 0.01))
+        (setq exit-status (process-exit-status process))
+        (with-current-buffer (get-buffer-create output-buffer) (setq-local buffer-read-only t))
+        (with-current-buffer (get-buffer-create fm-fsel-error-buffer) (setq-local buffer-read-only t))))
+
+    ;; Return exit-code
+    exit-status))
+
+;;
+;;;
+;;;; API
+;;;
+;;
+
+(defun fm-get-list ()
+  "Get current files selection as a string."
+  (fm--run-fsel nil nil "-l")
+  (with-current-buffer fm-fsel-output-buffer
+    (buffer-string)))
+
+(defun fm-append (paths)
+  "Append PATHS to fsel selection.
+PATHS should be a list of file paths."
+  (apply #'fm--run-fsel nil nil paths))
+
+(defun fm-replace (paths)
+  "Replace current fsel selection with PATHS.
+PATHS should be a list of file paths."
+  (apply #'fm--run-fsel nil nil "-r" paths))
+
+(defun fm-clear ()
   "Clear current fsel selection."
-  (interactive)
-  (let ((result (fm--run-fsel "clear" :buffer nil)))
-    (if (zerop (car result))
-        (message "Selection cleared")
-      (error "Failed to clear selection: %s" (cdr result)))))
+  (fm--run-fsel nil nil "-c"))
 
-(defun fm-add-selection (&optional path)
-  "Add PATH to fsel selection.
-If no PATH provided, tries to get path from:
-- active region (if it looks like a path)
-- Dired mode (file under cursor)
-- minibuffer prompt"
+;;
+;;;
+;;;; Interactive functitons for users
+;;;
+;;
+
+(defun fm-selection-list ()
+  "Display current fsel selection in *FM: Selected Files* buffer."
   (interactive)
-  (let ((path (or path
-                  (and (use-region-p)
-                       (buffer-substring (region-beginning) (region-end)))
-                  (if (derived-mode-p 'dired-mode)
-                      (dired-get-file-for-visit)
-                    (read-file-name "Add to selection: ")))))
-    (if (file-exists-p path)
-        (let ((result (fm--run-fsel "add" path :buffer nil)))
-          (if (zerop (car result))
-              (message "Added %s to selection" path)
-            (error "Failed to add %s: %s" path (cdr result))))
-      (error "Invalid path: %s" path))))
+  (let* ((bufname "*FM: Selected Files*")
+         (status (fm--run-fsel bufname t "-l")))))
+
+(defun fm-selection-append (paths)
+  "Append PATHS to fsel selection.
+PATHS should be a list of file paths."
+  (let ((expanded-paths (mapcar (lambda (path)
+                                  (if (string-prefix-p "~" path)
+                                      (expand-file-name path)
+                                    path))
+                                paths)))
+    (let ((result (apply #'fm--run-fsel nil nil expanded-paths)))
+      (if (zerop (car result))
+          (message "Paths added to selection")
+        (error "Failed to add paths: %s" (cdr result))))))
+
 
 ;; Key bindings
 ;; (defvar fm-mode-map
@@ -115,13 +182,10 @@ If no PATH provided, tries to get path from:
 ;;   "Keymap for fm commands.")
 
 (define-minor-mode fm-mode
-  "Minor mode for fm commands."
+  "Minor mode for FM commands."
   :require 'fm
-  :keymap fm-mode-map
+  ;;:keymap fm-mode-map
   :global t)
-
-(provide 'fm)
-;;; fm.el ends here
 
 (provide 'fm)
 ;;; fm.el ends here
