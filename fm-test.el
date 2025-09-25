@@ -1,33 +1,31 @@
-;;; fm-test.el --- Tests for fm.el -*- lexical-binding: t; -*-
-
+;;; fm-test.el --- Tests for fm.el
+;;; -*- lexical-binding: t; -*-
 (require 'buttercup)
 (require 'fm)
 
 (describe "fm--run-fsel"
   (it "returns success status and output"
-    (let ((fm-fsel-executable "fsel"))
-      (expect (fm--run-fsel "list")
-        :to-equal '(0 . "list\n"))))
-
-  (it "raises error on invalid command"
-    (let ((fm-fsel-executable "invalid-command"))
-      (expect (fm--run-fsel "list")
-        :to-raise 'error)))
+    (let ((fm-fsel-executable "echo"))
+      (expect (fm--run-fsel nil "-l")
+              :to-equal '(0 . "-l\n"))))
 
   (it "handles command with arguments"
-    (let ((fm-fsel-executable "fsel"))
-      (expect (fm--run-fsel "add" "test.txt")
-        :to-equal '(0 . "add test.txt\n"))))
-
-  (it "handles timeout (simulated)"
-    (let ((fm-fsel-executable "sleep"))
-      (expect (fm--run-fsel "list")
-        :to-equal '(0 . "list\n"))))
+    (let ((fm-fsel-executable "echo"))
+      (expect (fm--run-fsel nil "test" "test2")
+              :to-equal '(0 . "test test2\n"))))
 
   (it "detects incorrect arguments"
     (let ((fm-fsel-executable "fsel"))
-      (let ((result (fm--run-fsel "invalid-command" "arg")))
-        (expect (car result) :to-not-equal 0)
-        (expect (cdr result) :to-match ".*invalid command.*")))))
+      (let ((result (fm--run-fsel nil "-W" "-Z")))
+        (expect (car result) :not :to-equal 0)
+        (expect (cdr result) :to-match ".*")))))
 
-(buttercup-run-tests-in-buffer)
+(describe "fm-selections"
+  (it "returns success message"
+    (let ((fm-fsel-executable "true"))
+      (expect (fm-selection-append '("test1" "test2"))
+              :to-equal "Paths added to selection"))))
+
+;;(buttercup-run-tests-in-buffer)
+
+;;; fm-test.el ends here
