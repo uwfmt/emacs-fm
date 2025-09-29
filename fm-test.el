@@ -22,8 +22,8 @@
 
 (describe "fm-selections"
   (it "returns success message"
-    (let ((fm-fsel-executable "true"))
-      (expect (fm-selection-append '("test1" "test2"))
+    (let ((fm-fsel-executable "fsel"))
+      (expect (fm-selection-append '("/etc/fstab" "test2"))
               :to-equal "Paths added to selection"))))
 
 ;;(buttercup-run-tests-in-buffer)

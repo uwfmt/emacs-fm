@@ -7,7 +7,7 @@
 ;; Created: Septembro 25, 2025
 ;; Modified: Septembro 25, 2025
 ;; Version: 0.0.1
-;; Keywords: abbrev bib c calendar comm convenience data docs emulations extensions faces files frames games hardware help hypermedia i18n internal languages lisp local maint mail matching mouse multimedia news outlines processes terminals tex text tools unix vc wp
+;; Keywords: files tools unix
 ;; Homepage: https://github.com/grafov/fm-dired
 ;; Package-Requires: ((emacs "24.3"))
 ;;
