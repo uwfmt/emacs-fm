@@ -21,7 +21,7 @@
 ;; Modified: Majo 04, 2025
 ;; Version: 0.0.1
 ;; Keywords: files tools unix
-;; Homepage: https://github.com/grafov/fm
+;; Homepage: https://github.com/uwfmt/emacs-fm
 ;; Package-Requires: ((emacs "24.3"))
 ;;
 ;; This file is not part of GNU Emacs.
@@ -128,7 +128,19 @@ Both buffers are overwritten on each call."
 
 (defun fm-get-list ()
   "Get current files selection as a string."
-  (with-current-buffer "*fm-output*" (fm--run-fsel nil nil "-l") (buffer-string)))
+  (fm--run-fsel nil nil "-l")
+  (with-current-buffer fm-fsel-output-buffer
+    (buffer-string)))
+
+(defun fm-append (paths)
+  "Append PATHS to fsel selection.
+PATHS should be a list of file paths."
+  (apply #'fm--run-fsel nil nil paths))
+
+(defun fm-replace (paths)
+  "Replace current fsel selection with PATHS.
+PATHS should be a list of file paths."
+  (apply #'fm--run-fsel nil nil "-r" paths))
 
 ;;
 ;;;
@@ -144,8 +156,7 @@ Both buffers are overwritten on each call."
 
 (defun fm-selection-append (paths)
   "Append PATHS to fsel selection.
-PATHS should be a list of file paths. Tildes (~) are expanded to user
-home directory."
+PATHS should be a list of file paths."
   (let ((expanded-paths (mapcar (lambda (path)
                                   (if (string-prefix-p "~" path)
                                       (expand-file-name path)
@@ -155,6 +166,7 @@ home directory."
       (if (zerop (car result))
           (message "Paths added to selection")
         (error "Failed to add paths: %s" (cdr result))))))
+
 
 ;; Key bindings
 ;; (defvar fm-mode-map

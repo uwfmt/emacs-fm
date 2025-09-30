@@ -8,12 +8,14 @@
 ;; Modified: Septembro 25, 2025
 ;; Version: 0.0.1
 ;; Keywords: files tools unix
-;; Homepage: https://github.com/grafov/fm-dired
+;; Homepage: https://github.com/uwfmt/emacs-fm
 ;; Package-Requires: ((emacs "24.3"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
+;;
+;;  Integration with Dired.
 ;;
 ;;  Description
 ;;
