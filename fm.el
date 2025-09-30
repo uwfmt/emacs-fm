@@ -142,6 +142,10 @@ PATHS should be a list of file paths."
 PATHS should be a list of file paths."
   (apply #'fm--run-fsel nil nil "-r" paths))
 
+(defun fm-clear ()
+  "Clear current fsel selection."
+  (fm--run-fsel nil nil "-c"))
+
 ;;
 ;;;
 ;;;; Interactive functitons for users

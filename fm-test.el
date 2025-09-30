@@ -219,4 +219,39 @@
       (let ((list (fm-get-list)))
         (expect (string-trim list) :to-equal "")))))
 
+(describe "fm-clear API"
+  
+  (before-each
+    (when (locate-file "fsel" exec-path)
+      (call-process "fsel" nil nil nil "-c"))
+    (when (get-buffer fm-fsel-output-buffer)
+      (kill-buffer fm-fsel-output-buffer)))
+  
+  (after-each
+    (when (locate-file "fsel" exec-path)
+      (call-process "fsel" nil nil nil "-c")))
+  
+  (it "executes successfully with mock"
+    (let ((fm-fsel-executable "echo"))
+      (expect (fm-clear) :to-equal 0)))
+  
+  (it "clears selection with real fsel"
+    (when (locate-file "fsel" exec-path)
+      ;; Add some files first
+      (fm-append fm-test-files)
+      ;; Verify they were added
+      (let ((list-before (fm-get-list)))
+        (expect list-before :to-match "test1"))
+      ;; Clear selection
+      (fm-clear)
+      ;; Verify selection is empty
+      (let ((list-after (fm-get-list)))
+        (expect (string-trim list-after) :to-equal ""))))
+  
+  (it "works on empty selection"
+    (when (locate-file "fsel" exec-path)
+      (expect (fm-clear) :to-equal 0)
+      (let ((list (fm-get-list)))
+        (expect (string-trim list) :to-equal "")))))
+
 ;;; fm-test.el ends here
