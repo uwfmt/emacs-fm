@@ -22,7 +22,7 @@
 ;; Version: 0.0.1
 ;; Keywords: files tools unix
 ;; Homepage: https://github.com/uwfmt/emacs-fm
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "24.4"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -127,10 +127,13 @@ Both buffers are overwritten on each call."
 ;;
 
 (defun fm-get-list ()
-  "Get current files selection as a string."
-  (fm--run-fsel nil nil "-l")
+  "Get current files selection as a list of paths."
+  (fm--run-fsel nil nil)
   (with-current-buffer fm-fsel-output-buffer
-    (buffer-string)))
+    (let ((content (string-trim (buffer-string))))
+      (if (string-empty-p content)
+          nil
+        (split-string content "\n" t)))))
 
 (defun fm-append (paths)
   "Append PATHS to fsel selection.
@@ -146,46 +149,41 @@ PATHS should be a list of file paths."
   "Clear current fsel selection."
   (fm--run-fsel nil nil "-c"))
 
+
 ;;
 ;;;
 ;;;; Interactive functitons for users
 ;;;
 ;;
 
+;;;###autoload
 (defun fm-selection-list ()
-  "Display current fsel selection in *FM: Selected Files* buffer."
+  "Display current fsel selection in a buffer."
   (interactive)
-  (let* ((bufname "*FM: Selected Files*")
-         (status (fm--run-fsel bufname t "-l")))))
+  (fm--run-fsel "*FM: Selected Files*" t "-l"))
 
+;;;###autoload
+(defun fm-selection-clear ()
+  "Clear current fsel selection."
+  (interactive)
+  (let ((result (fm-clear)))
+    (if (zerop result)
+        (message "Selection cleared"))))
+
+;;;###autoload
 (defun fm-selection-append (paths)
   "Append PATHS to fsel selection.
 PATHS should be a list of file paths."
+  (interactive)
   (let ((expanded-paths (mapcar (lambda (path)
                                   (if (string-prefix-p "~" path)
                                       (expand-file-name path)
                                     path))
                                 paths)))
     (let ((result (apply #'fm--run-fsel nil nil expanded-paths)))
-      (if (zerop (car result))
+      (if (zerop result)
           (message "Paths added to selection")
-        (error "Failed to add paths: %s" (cdr result))))))
-
-
-;; Key bindings
-;; (defvar fm-mode-map
-;;   (let ((map (make-sparse-keymap)))
-;;     (define-key map (kbd "C-c % l") #'fm-list-selection)
-;;     (define-key map (kbd "C-c % c") #'fm-clear-selection)
-;;     (define-key map (kbd "C-c % a") #'fm-add-selection)
-;;     map)
-;;   "Keymap for fm commands.")
-
-(define-minor-mode fm-mode
-  "Minor mode for FM commands."
-  :require 'fm
-  ;;:keymap fm-mode-map
-  :global t)
+        (error "Failed to add paths")))))
 
 (provide 'fm)
 ;;; fm.el ends here
