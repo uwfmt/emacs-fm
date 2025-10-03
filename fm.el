@@ -48,6 +48,7 @@
 
 (defconst fm-fsel-output-buffer "*fm-output*"
   "Buffer name for raw output (stdout) of fsel utility.")
+
 (defconst fm-fsel-error-buffer "*fm-errors*"
   "Errors buffer for output of errors (stderr) of fsel utility.")
 

@@ -97,8 +97,8 @@ after the operation."
 (define-minor-mode fm-dired-mode
   "Minor mode for FM + Dired commands."
   :require 'fm
-  ;;:keymap fm-mode-map
-  :global t)
+  :keymap fm-dired-mode-map
+  :lighter " FM")
 
 (provide 'fm-dired)
 ;;; fm-dired.el ends here

@@ -1,0 +1,117 @@
+#+TITLE: fman: File MANipulations for Emacs
+#+html: <a href="https://www.gnu.org/software/emacs/"><img alt="GNU Emacs" src="https://img.shields.io/static/v1?label=Made%20For&message=GNU%20Emacs&color=7a5aba&logo=gnuemacs&logoColor=white"/></a>
+
+File management for GNU/Emacs with Dired + [[https://github.com/uwfmt/fsel][fsel]].
+
+* Features
+
+- *fm.el* - Core API for fsel integration
+- *fm-dired.el* - Dired integration with file selection commands
+
+** Dired Commands
+
+- =* S= (=fm-dired-select=) - Place marked items into selection
+- =* C= (=fm-dired-copy-here=) - Copy items from selection to current directory
+- =* M= (=fm-dired-move-here=) - Move items from selection to current directory
+- =* D= (=fm-dired-remove=) - Delete files from selection
+- =* U= (=fm-dired-clear=) - Clear selection and unmark all files
+
+* Testing
+
+Tests are written using [[https://github.com/jorgenschaefer/emacs-buttercup][Buttercup]].
+
+** Running Tests
+
+#+begin_src bash
+# Run all tests
+make test
+
+# Run specific test suites
+make test-fm        # Core fm.el tests
+make test-fm-dired  # Dired integration tests
+
+# Compile files
+make compile
+
+# Clean up
+make clean
+#+end_src
+
+** Prerequisites
+
+- Emacs 24.3+
+- Buttercup testing framework
+- =fsel= utility installed and in PATH
+
+* Installation
+
+** Prerequisites
+
+First, install the =fsel= utility (see [[https://github.com/uwfmt/fsel][fsel repository]]):
+
+#+begin_src bash
+git clone https://github.com/uwfmt/fsel.git
+cd fsel
+make
+sudo make install
+#+end_src
+
+** Using straight.el
+
+Add to your Emacs configuration:
+
+#+begin_src elisp
+(use-package fm
+  :straight (fm :type git :host github :repo "uwfmt/emacs-fm")
+  :config
+  (require 'fm-dired)
+  :hook (dired-mode . fm-dired-mode))
+#+end_src
+
+Or without =use-package=:
+
+#+begin_src elisp
+(straight-use-package
+ '(fm :type git :host github :repo "uwfmt/emacs-fm"))
+(require 'fm)
+(require 'fm-dired)
+(add-hook 'dired-mode-hook #'fm-dired-mode)
+#+end_src
+
+** Using [[https://doomemacs.org/][Doom Emacs]]
+
+Add to your =packages.el=:
+
+#+begin_src elisp
+(package! fm
+  :recipe (:host github :repo "uwfmt/emacs-fm"))
+#+end_src
+
+Add to your =config.el=:
+
+#+begin_src elisp
+(use-package! fm
+  :config
+  (require 'fm-dired)
+  :hook (dired-mode . fm-dired-mode))
+#+end_src
+
+Then run =doom sync= and restart Emacs.
+
+** Manual Installation
+
+1. Clone the repository:
+
+#+begin_src bash
+git clone https://github.com/uwfmt/emacs-fm.git ~/.emacs.d/site-lisp/emacs-fm
+#+end_src
+
+2. Add to your Emacs configuration:
+
+#+begin_src elisp
+(add-to-list 'load-path "~/.emacs.d/site-lisp/emacs-fm")
+(require 'fm)
+(require 'fm-dired)
+(add-hook 'dired-mode-hook #'fm-dired-mode)
+#+end_src
+
